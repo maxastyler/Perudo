@@ -107,12 +107,10 @@ defmodule Perudo.Game do
   with name being the name of the player who loses a die
   """
   @spec perudo(t()) :: {:caller_wins | :caller_loses, player()}
-  def perudo(
-        %Game{
-          current_player: current_player,
-          rounds: [%{bids: [{last_player, last_bid} | _], dice: dice} | _]
-        }
-      ) do
+  def perudo(%Game{
+        current_player: current_player,
+        rounds: [%{bids: [{last_player, last_bid} | _], dice: dice} | _]
+      }) do
     case dice_satisfy_bid(dice, last_bid) do
       true -> {:caller_loses, current_player}
       false -> {:caller_wins, last_player}
