@@ -4,6 +4,8 @@ defmodule Perudo.Game do
   """
   alias Perudo.Game
 
+  @default_max_dice 5
+
   @type player() :: String.t()
   @type dice_set :: [integer()]
 
@@ -12,7 +14,11 @@ defmodule Perudo.Game do
   """
   @type bid :: {integer(), integer()}
 
-  @type round :: %{next_players: %{player() => player()}, bids: [{player(), bid}]}
+  @type round :: %{
+          next_players: %{player() => player()},
+          bids: [{player(), bid}],
+          dice: %{player() => [integer()]}
+        }
 
   @type t() :: %__MODULE__{
           rounds: [round],
@@ -38,11 +44,22 @@ defmodule Perudo.Game do
   and starts a new round with the first player being the first player in the list.
   """
   @spec new_game([player()]) :: t()
-  def new_game([first | _] = players) do
+  def new_game([first | _] = players, starting_dice \\ @default_max_dice) do
     %Game{
       current_player: first,
       players: players,
-      rounds: [%{next_players: list_to_adjacency_map(players), bids: []}]
+      rounds: [
+        %{
+          next_players: list_to_adjacency_map(players),
+          bids: [],
+          dice:
+            for(
+              p <- players,
+              into: %{},
+              do: {p, for(_ <- 0..starting_dice, do: :rand.uniform(6))}
+            )
+        }
+      ]
     }
   end
 
@@ -56,7 +73,6 @@ defmodule Perudo.Game do
         type_dice
       )
       when type_dice in 2..6 do
-
     next_player = get_in(current_round, [:next_players, current_player])
 
     {_, {previous_num_dice, previous_type_dice}} =
@@ -84,5 +100,35 @@ defmodule Perudo.Game do
 
   def bid(_, _, _) do
     {:error, "Dice type should be a number between 2 and 6"}
+  end
+
+  @doc """
+  Call a perudo on the current game. Returns {:caller_wins, name} or {:caller_loses, name}
+  with name being the name of the player who loses a die
+  """
+  @spec perudo(t()) :: {:caller_wins | :caller_loses, player()}
+  def perudo(
+        %Game{
+          current_player: current_player,
+          rounds: [%{bids: [{last_player, last_bid} | _], dice: dice} | _]
+        }
+      ) do
+    case dice_satisfy_bid(dice, last_bid) do
+      true -> {:caller_loses, current_player}
+      false -> {:caller_wins, last_player}
+    end
+  end
+
+  @doc """
+  Check if the given dice satisfy the given bid
+  """
+  @spec dice_satisfy_bid(%{player() => [integer()]}, bid()) :: boolean()
+  def dice_satisfy_bid(dice, {num_dice, type_dice}) do
+    for(
+      d <- Map.values(dice) |> Enum.concat(),
+      d == type_dice or d == 1,
+      reduce: 0,
+      do: (acc -> acc + 1)
+    ) >= num_dice
   end
 end

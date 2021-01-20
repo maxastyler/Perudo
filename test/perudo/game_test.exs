@@ -4,6 +4,11 @@ defmodule Perudo.GameTest do
 
   alias Perudo.Game
 
+  @default_dice %{"alice" => [1, 1, 1, 1, 1], "bob" => [1, 1, 1, 1, 1], "eve" => [1, 1, 1, 1, 1]}
+
+  defp put_dice(game, dice \\ @default_dice),
+    do: put_in(game, [Access.key(:rounds), Access.at(0), :dice], dice)
+
   setup_all do
     {:ok,
      example_game: %Game{
@@ -16,27 +21,18 @@ defmodule Perudo.GameTest do
              "alice" => "bob",
              "bob" => "eve",
              "eve" => "alice"
-           }
+           },
+           dice: @default_dice
          }
        ]
      }}
   end
 
-  test "creates valid game from given players" do
-    assert Game.new_game(["alice", "bob", "eve"]) == %Perudo.Game{
-             current_player: "alice",
-             players: ["alice", "bob", "eve"],
-             rounds: [
-               %{
-                 bids: [],
-                 next_players: %{
-                   "alice" => "bob",
-                   "bob" => "eve",
-                   "eve" => "alice"
-                 }
-               }
-             ]
-           }
+  test "creates valid game from given players", state do
+    assert Game.new_game(["alice", "bob", "eve"]) |> put_dice() ==
+             put_in(state[:example_game], [Access.key(:current_player)], "alice")
+             |> pop_in([Access.key(:rounds), Access.at(0), :bids, Access.at(0)])
+             |> elem(1)
   end
 
   test "bid fails when dice type is wrong", state do
@@ -98,5 +94,11 @@ defmodule Perudo.GameTest do
                3,
                2
              )
+  end
+
+  test "dice satisfy function works" do
+    assert Game.dice_satisfy_bid(@default_dice, {3, 2})
+    assert Game.dice_satisfy_bid(%{"a" => [1, 5, 2, 3], "b" => [1, 1]}, {4, 5})
+    refute Game.dice_satisfy_bid(%{"a" => [1, 5, 2, 3], "b" => [1, 1]}, {5, 5})
   end
 end
