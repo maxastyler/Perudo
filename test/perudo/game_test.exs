@@ -101,4 +101,15 @@ defmodule Perudo.GameTest do
     assert Game.dice_satisfy_bid(%{"a" => [1, 5, 2, 3], "b" => [1, 1]}, {4, 5})
     refute Game.dice_satisfy_bid(%{"a" => [1, 5, 2, 3], "b" => [1, 1]}, {5, 5})
   end
+
+  test "calling perudo returns expected results", state do
+    assert Game.perudo(state[:example_game]) == {:caller_loses, "bob"}
+
+    assert put_in(state[:example_game], [Access.key(:rounds), Access.at(0), :dice], %{
+             "alice" => [2, 2, 4],
+             "bob" => [2, 5],
+             "eve" => [3, 4, 5]
+           })
+           |> Game.perudo() == {:caller_wins, "alice"}
+  end
 end
