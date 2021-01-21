@@ -227,7 +227,7 @@ defmodule Perudo.Game do
       |> put_in([key(:current_player)], next_player)
       |> update_in([key(:rounds)], fn r ->
         [
-          if length(dice[loser]) == 1 do
+          if length(dice[loser]) == 1 and map_size(dice) > 2 do
             put_in(next_round, [:palafico], loser)
           else
             next_round
