@@ -214,7 +214,7 @@ defmodule Perudo.Game do
     next_round = Enum.map(players, fn p -> {p, length(Map.get(dice, p, []))} end) |> new_round()
 
     if Enum.count(next_round[:next_players]) == 1 do
-      put_in(game, [:winner], List.first(Map.keys(next_round[:next_players])))
+      put_in(game, [key(:winner)], List.first(Map.keys(next_round[:next_players])))
     else
       next_player =
         if dice[loser] == [] do
