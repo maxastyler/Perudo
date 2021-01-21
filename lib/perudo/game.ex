@@ -23,13 +23,14 @@ defmodule Perudo.Game do
         }
 
   @type t() :: %__MODULE__{
+          winner: nil | player(),
           rounds: [round],
           current_player: player(),
           players: [player()]
         }
 
   @enforce_keys [:current_player, :players]
-  defstruct [:current_player, players: [], rounds: []]
+  defstruct [:current_player, players: [], rounds: [], winner: nil]
 
   @doc """
   Turn the list l into a map where each key maps to the next value in the list. 
