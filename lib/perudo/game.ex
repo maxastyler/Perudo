@@ -42,6 +42,26 @@ defmodule Perudo.Game do
   end
 
   @doc """
+  Create a new round with the given pairs of [{player, dice_num}]
+  """
+  def new_round(players_and_dice) do
+    pd_filtered = Enum.filter(players_and_dice, fn {_, d} -> d > 0 end)
+    {players, _} = pd_filtered |> Enum.unzip()
+
+    %{
+      palafico: nil,
+      next_players: list_to_adjacency_map(players),
+      bids: [],
+      dice:
+        for(
+          {p, d} <- pd_filtered,
+          into: %{},
+          do: {p, for(_ <- 1..d, do: :rand.uniform(6))}
+        )
+    }
+  end
+
+  @doc """
   Create a new game from the given players list.
   This function creates an adjacency map in the order that the list is
   and starts a new round with the first player being the first player in the list.
@@ -52,17 +72,7 @@ defmodule Perudo.Game do
       current_player: first,
       players: players,
       rounds: [
-        %{
-          palafico: nil,
-          next_players: list_to_adjacency_map(players),
-          bids: [],
-          dice:
-            for(
-              p <- players,
-              into: %{},
-              do: {p, for(_ <- 0..starting_dice, do: :rand.uniform(6))}
-            )
-        }
+        new_round(Enum.map(players, &{&1, starting_dice}))
       ]
     }
   end
