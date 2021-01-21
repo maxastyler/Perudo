@@ -190,6 +190,45 @@ defmodule Perudo.Game do
   end
 
   @doc """
+  Call dudo on the game. Returns {:ok, next_state} or {:error, reason}
+  """
+  @spec call_dudo(t()) :: {:ok, t()} | {:error, String.t()}
+  def call_dudo(%{rounds: [%{bids: []} | _]}),
+    do: {:error, "Someone must bid before dudo is called"}
+
+  def call_dudo(%Game{players: players} = game) do
+    {_who_won, loser} = dudo(game)
+
+    dice = get_in(game, [key(:rounds), at(0), :dice]) |> update_in([loser], &Enum.drop(&1, 1))
+
+    next_round = Enum.map(players, fn p -> {p, length(Map.get(dice, p, []))} end) |> new_round()
+
+    if Enum.count(next_round[:next_players]) == 1 do
+      put_in(game, [:winner], List.first(Map.keys(next_round[:next_players])))
+    else
+      next_player =
+        if dice[loser] == [] do
+          get_in(game, [key(:rounds), at(0), :next_players, loser])
+        else
+          loser
+        end
+
+      game
+      |> put_in([key(:current_player)], next_player)
+      |> update_in([key(:rounds)], fn r ->
+        [
+          if length(dice[loser]) == 1 do
+            put_in(next_round, [:palafico], loser)
+          else
+            next_round
+          end
+          | r
+        ]
+      end)
+    end
+  end
+
+  @doc """
   Check if the given dice satisfy the given bid
   """
   @spec dice_satisfy_bid(%{player() => [integer()]}, bid(), boolean()) :: boolean()
