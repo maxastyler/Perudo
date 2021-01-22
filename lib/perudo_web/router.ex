@@ -17,7 +17,7 @@ defmodule PerudoWeb.Router do
   scope "/", PerudoWeb do
     pipe_through :browser
 
-    live "/", PageLive, :index
+    live "/game/:room/:player", GameLive
   end
 
   # Other scopes may use custom stacks.

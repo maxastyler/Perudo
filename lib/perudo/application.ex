@@ -14,9 +14,11 @@ defmodule Perudo.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Perudo.PubSub},
       # Start the Endpoint (http/https)
-      PerudoWeb.Endpoint
+      PerudoWeb.Endpoint,
       # Start a worker by calling: Perudo.Worker.start_link(arg)
       # {Perudo.Worker, arg}
+      {Registry, keys: :unique, name: Perudo.GameRegistry},
+      {DynamicSupervisor, strategy: :one_for_one, name: Perudo.GameSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
