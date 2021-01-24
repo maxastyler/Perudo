@@ -77,6 +77,9 @@ defmodule PerudoWeb.GameLive do
     {:noreply, put_flash(socket, :info, message)}
   end
 
+  def handle_info(%{event: "server_halting", payload: _}, socket) do
+    {:noreply, put_flash(socket, :error, "Game timed out. Refresh page to continue")}
+  end
 
   @impl true
   def render(assigns) do

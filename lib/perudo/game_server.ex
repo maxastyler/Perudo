@@ -7,23 +7,27 @@ defmodule Perudo.GameServer do
   alias Perudo.PubSub
   alias Perudo.Game
 
+  @server_timeout 1000 * 60 * 10
+
   def start_link(options) do
     {state, opts} = Keyword.pop(options, :state)
     GenStateMachine.start_link(__MODULE__, {:lobby, state}, opts)
   end
 
   @impl true
-  def init({state, data}), do: {:ok, state, data}
+  def init({state, data}), do: {:ok, state, data, [{:timeout, @server_timeout, :any}]}
+
+  defp wrap_timeout(term), do: [term, {:timeout, @server_timeout, :any}]
 
   @impl true
   def handle_event({:call, from}, {:add_player, player}, :lobby, data) do
     new_data = update_in(data, [:players], &MapSet.put(&1, player))
-    {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
+    {:keep_state, new_data, {:reply, from, {:ok, new_data}} |> wrap_timeout()}
   end
 
   def handle_event({:call, from}, {:remove_player, player}, :lobby, data) do
     new_data = update_in(data, [:players], &MapSet.delete(&1, player))
-    {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
+    {:keep_state, new_data, {:reply, from, {:ok, new_data}} |> wrap_timeout()}
   end
 
   def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
@@ -32,9 +36,10 @@ defmodule Perudo.GameServer do
         Map.put(data, :game, Perudo.Game.new_game(MapSet.to_list(data.players)))
         |> broadcast_game_state()
 
-      {:next_state, :in_game, new_data, {:reply, from, {:ok, new_data}}}
+      {:next_state, :in_game, new_data, {:reply, from, {:ok, new_data}} |> wrap_timeout()}
     else
-      {:keep_state_and_data, {:reply, from, {:error, "can't start with less than two players"}}}
+      {:keep_state_and_data,
+       {:reply, from, {:error, "can't start with less than two players"}} |> wrap_timeout()}
     end
   end
 
@@ -47,13 +52,13 @@ defmodule Perudo.GameServer do
     if current_player == player do
       with {:ok, new_game} <- Game.bid(game, n, t) do
         {:keep_state, Map.put(data, :game, new_game) |> broadcast_game_state(),
-         {:reply, from, {:ok, new_game}}}
+         {:reply, from, {:ok, new_game}} |> wrap_timeout()}
       else
-        {:error, e} -> {:keep_state_and_data, {:reply, from, {:error, e}}}
+        {:error, e} -> {:keep_state_and_data, {:reply, from, {:error, e}} |> wrap_timeout()}
       end
     else
       {:keep_state_and_data,
-       {:reply, from, {:error, "called from player who isn't current player"}}}
+       {:reply, from, {:error, "called from player who isn't current player"}} |> wrap_timeout()}
     end
   end
 
@@ -68,27 +73,32 @@ defmodule Perudo.GameServer do
         case Map.put(data, :game, new_game) |> broadcast_game_state() do
           %{game: %Perudo.Game{winner: nil}} = d ->
             broadcast_dudo(d)
-            {:keep_state, d, {:reply, from, {:ok, d}}}
+            {:keep_state, d, {:reply, from, {:ok, d}} |> wrap_timeout()}
 
           d ->
-            {:next_state, :won, d, {:reply, from, {:ok, d}}}
+            {:next_state, :won, d, {:reply, from, {:ok, d}} |> wrap_timeout()}
         end
       else
-        {:error, e} -> {:keep_state_and_data, {:reply, from, {:error, e}}}
+        {:error, e} -> {:keep_state_and_data, {:reply, from, {:error, e}} |> wrap_timeout()}
       end
     else
       {:keep_state_and_data,
-       {:reply, from, {:error, "called from player who isn't current player"}}}
+       {:reply, from, {:error, "called from player who isn't current player"}} |> wrap_timeout()}
     end
   end
 
   def handle_event({:call, from}, :broadcast_state, _, %{game: _} = data) do
     broadcast_game_state(data)
-    {:keep_state_and_data, {:reply, from, {:ok, "broadcasted"}}}
+    {:keep_state_and_data, {:reply, from, {:ok, "broadcasted"}} |> wrap_timeout()}
   end
 
   def handle_event({:call, from}, _, _, _),
-    do: {:keep_state_and_data, {:reply, from, {:error, "no match"}}}
+    do: {:keep_state_and_data, {:reply, from, {:error, "no match"}} |> wrap_timeout()}
+
+  def handle_event(:timeout, _, _, %{room: room}) do
+    PerudoWeb.Endpoint.broadcast(room, "server_halting", :nothing)
+    :stop
+  end
 
   @doc """
   Broadcast a message when dudo has been called
