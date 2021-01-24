@@ -13,9 +13,7 @@ defmodule Perudo.GameServer do
   end
 
   @impl true
-  def init({state, data}) do
-    {:ok, state, data}
-  end
+  def init({state, data}), do: {:ok, state, data}
 
   @impl true
   def handle_event({:call, from}, {:add_player, player}, :lobby, data) do
@@ -76,6 +74,11 @@ defmodule Perudo.GameServer do
     end
   end
 
+  def handle_event({:call, from}, :broadcast_state, _, %{game: _} = data) do
+    broadcast_game_state(data)
+    {:keep_state_and_data, {:reply, from, {:ok, "broadcasted"}}}
+  end
+
   def handle_event({:call, from}, _, _, _),
     do: {:keep_state_and_data, {:reply, from, {:error, "no match"}}}
 
@@ -93,8 +96,7 @@ defmodule Perudo.GameServer do
   def start_server(name) do
     DynamicSupervisor.start_child(
       Perudo.GameSupervisor,
-      {Perudo.GameServer,
-       state: %{room: name, players: MapSet.new()}, name: via(name)}
+      {Perudo.GameServer, state: %{room: name, players: MapSet.new()}, name: via(name)}
     )
   end
 
