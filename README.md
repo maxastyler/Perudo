@@ -1,5 +1,9 @@
 # Perudo
 
+A pheonix liveview app which lets you play [perudo](https://en.wikipedia.org/wiki/Dudo) with other people online. 
+
+It uses [GenStateMachine](https://hexdocs.pm/gen_state_machine/GenStateMachine.html) to keep game state.
+
 To start your Phoenix server:
 
   * Install dependencies with `mix deps.get`
