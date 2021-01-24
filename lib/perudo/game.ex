@@ -213,29 +213,30 @@ defmodule Perudo.Game do
 
     next_round = Enum.map(players, fn p -> {p, length(Map.get(dice, p, []))} end) |> new_round()
 
-    if Enum.count(next_round[:next_players]) == 1 do
-      put_in(game, [key(:winner)], List.first(Map.keys(next_round[:next_players])))
-    else
-      next_player =
-        if dice[loser] == [] do
-          get_in(game, [key(:rounds), at(0), :next_players, loser])
-        else
-          loser
-        end
+    {:ok,
+     if Enum.count(next_round[:next_players]) == 1 do
+       put_in(game, [key(:winner)], List.first(Map.keys(next_round[:next_players])))
+     else
+       next_player =
+         if dice[loser] == [] do
+           get_in(game, [key(:rounds), at(0), :next_players, loser])
+         else
+           loser
+         end
 
-      game
-      |> put_in([key(:current_player)], next_player)
-      |> update_in([key(:rounds)], fn r ->
-        [
-          if length(dice[loser]) == 1 and map_size(dice) > 2 do
-            put_in(next_round, [:palafico], loser)
-          else
-            next_round
-          end
-          | r
-        ]
-      end)
-    end
+       game
+       |> put_in([key(:current_player)], next_player)
+       |> update_in([key(:rounds)], fn r ->
+         [
+           if length(dice[loser]) == 1 and map_size(dice) > 2 do
+             put_in(next_round, [:palafico], loser)
+           else
+             next_round
+           end
+           | r
+         ]
+       end)
+     end}
   end
 
   @doc """
