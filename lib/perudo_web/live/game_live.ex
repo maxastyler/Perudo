@@ -169,6 +169,14 @@ defmodule PerudoWeb.GameLive do
     """
   end
 
+  def render_dice(player, nil) do
+  assigns = %{}
+
+  ~L"""
+    """
+  end
+
+  end
   def render_dice(player, dice) do
     assigns = %{player: player, dice: dice}
 
