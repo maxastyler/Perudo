@@ -26,12 +26,16 @@ defmodule Perudo.GameServer do
     {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
   end
 
-  def handle_event({:call, from}, :start_game, :lobby, data) do
-    new_data =
-      Map.put(data, :game, Perudo.Game.new_game(MapSet.to_list(data.players)))
-      |> broadcast_game_state()
+  def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
+    if MapSet.size(players) > 1 do
+      new_data =
+        Map.put(data, :game, Perudo.Game.new_game(MapSet.to_list(data.players)))
+        |> broadcast_game_state()
 
-    {:next_state, :in_game, new_data, {:reply, from, {:ok, new_data}}}
+      {:next_state, :in_game, new_data, {:reply, from, {:ok, new_data}}}
+    else
+      {:keep_state_and_data, {:reply, from, {:error, "can't start with less than two players"}}}
+    end
   end
 
   def handle_event(
@@ -62,8 +66,12 @@ defmodule Perudo.GameServer do
     if current_player == player do
       with {:ok, new_game} <- Game.call_dudo(game) do
         case Map.put(data, :game, new_game) |> broadcast_game_state() do
-          %{game: %Perudo.Game{winner: nil}} = d -> {:keep_state, d, {:reply, from, {:ok, d}}}
-          d -> {:next_state, :won, d, {:reply, from, {:ok, d}}}
+          %{game: %Perudo.Game{winner: nil}} = d ->
+            broadcast_dudo(d)
+            {:keep_state, d, {:reply, from, {:ok, d}}}
+
+          d ->
+            {:next_state, :won, d, {:reply, from, {:ok, d}}}
         end
       else
         {:error, e} -> {:keep_state_and_data, {:reply, from, {:error, e}}}
@@ -81,6 +89,21 @@ defmodule Perudo.GameServer do
 
   def handle_event({:call, from}, _, _, _),
     do: {:keep_state_and_data, {:reply, from, {:error, "no match"}}}
+
+  @doc """
+  Broadcast a message when dudo has been called
+  """
+  def broadcast_dudo(%{room: room, game: game}) do
+    [_, %{dice: dice} | _] = game.rounds
+
+    dice_string = for {player, d} <- dice, into: "", do: "#{player}: #{inspect(d)}\n"
+
+    PerudoWeb.Endpoint.broadcast(
+      room,
+      "dudo_called",
+      "Dudo called!\nPlayers had:\n#{dice_string}"
+    )
+  end
 
   def broadcast_game_state(%{room: room, game: game} = data) do
     PerudoWeb.Endpoint.broadcast(room, "game_updated", game)

@@ -34,22 +34,33 @@ defmodule PerudoWeb.GameLive do
 
   @impl true
   def handle_event("start_game", _unsigned_params, socket) do
-    GS.call_name(socket.assigns[:room], :start_game)
-    {:noreply, socket}
+    case GS.call_name(socket.assigns[:room], :start_game) do
+      {:error, e} -> {:noreply, put_flash(socket, :error, e)}
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("make_bid", %{"bid" => %{"amount" => amount, "type" => type}}, socket) do
-    GS.call_name(
-      socket.assigns[:room],
-      {:move, socket.assigns[:player], {:bid, String.to_integer(amount), String.to_integer(type)}}
-    )
-
-    {:noreply, socket}
+    with {amount, _} <- Integer.parse(amount),
+         {type, _} <- Integer.parse(type),
+         {:ok, _} <-
+           GS.call_name(
+             socket.assigns[:room],
+             {:move, socket.assigns[:player], {:bid, amount, type}}
+           ) do
+      {:noreply, socket}
+    else
+      {:error, e} -> {:noreply, put_flash(socket, :error, e)}
+      :error -> {:noreply, put_flash(socket, :error, "enter a number")}
+      _ -> {:noreply, put_flash(socket, :error, "unhandled error")}
+    end
   end
 
   def handle_event("dudo", _params, socket) do
-    GS.call_name(socket.assigns[:room], {:move, socket.assigns[:player], :dudo})
-    {:noreply, socket}
+    case GS.call_name(socket.assigns[:room], {:move, socket.assigns[:player], :dudo}) do
+      {:error, e} -> {:noreply, put_flash(socket, :error, e)}
+      {:ok, _} -> {:noreply, socket}
+    end
   end
 
   @impl true
@@ -59,8 +70,13 @@ defmodule PerudoWeb.GameLive do
 
   @impl true
   def handle_info(%{event: "game_updated", payload: game}, socket) do
-    {:noreply, assign(socket, game: game)}
+    {:noreply, assign(socket, game: game) |> clear_flash()}
   end
+
+  def handle_info(%{event: "dudo_called", payload: message}, socket) do
+    {:noreply, put_flash(socket, :info, message)}
+  end
+
 
   @impl true
   def render(assigns) do
@@ -82,6 +98,7 @@ defmodule PerudoWeb.GameLive do
   def render_game(
         %Perudo.Game{
           current_player: current_player,
+          winner: nil,
           rounds: [%{bids: bids, dice: dice} = current | _]
         } = game,
         player
@@ -115,6 +132,20 @@ defmodule PerudoWeb.GameLive do
     <% end %>
     """
   end
+  def render_game(
+        %Perudo.Game{
+          winner: winner},
+        player
+      ) do
+    assigns = %{
+      winner: winner
+    }
+
+    ~L"""
+    <div><h2>Winner is: <%= @winner %></h2></div>
+    """
+  end
+
 
   def render_game_controls() do
     assigns = %{}

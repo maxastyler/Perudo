@@ -29,6 +29,7 @@ defmodule Perudo.Game do
           players: [player()]
         }
 
+  @derive Inspect
   @enforce_keys [:current_player, :players]
   defstruct [:current_player, players: [], rounds: [], winner: nil]
 
@@ -134,6 +135,9 @@ defmodule Perudo.Game do
       {_, {previous_num_dice, 1}} when previous_num_dice >= num_dice ->
         {:error, "Number of dice should always increase or stay the same when type is the same"}
 
+      {_, {_, 1}} ->
+        {:ok, update_game_with_bid(game, current_player, {num_dice, 1})}
+
       {_, {previous_num_dice, _}} when ceil(previous_num_dice / 2) == num_dice ->
         {:ok, update_game_with_bid(game, current_player, {num_dice, 1})}
 
@@ -147,7 +151,8 @@ defmodule Perudo.Game do
         %{current_player: current_player, rounds: [current_round | _]} = game,
         num_dice,
         type_dice
-      ) do
+      )
+      when type_dice in 1..6 do
     {_, {previous_num_dice, previous_type_dice}} =
       case List.first(current_round.bids) do
         nil -> {0, {0, 0}}
