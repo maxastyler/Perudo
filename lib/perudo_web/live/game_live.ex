@@ -174,7 +174,7 @@ defmodule PerudoWeb.GameLive do
 
     ~L"""
     <div><tr class="player-row" id="<%= @player %>">
-    <td><%= @player %></td>
+    <td>Your dice: </td>
     <%= for d <- @dice do %>
     <td><%= d %></td>
     <% end %>
