@@ -130,7 +130,7 @@ defmodule PerudoWeb.GameLive do
     </form>
     </div>
     <div>
-    <button phx-click="dudo">Call Dudo</button>    
+    <button phx-click="dudo">Call Dudo</button>
     </div>
     """
   end
